@@ -28,6 +28,9 @@ install -Dm0644 /usr/share/applications/albert.desktop /etc/xdg/autostart/albert
 # k3d's runtime and kube.internal DNS; config is in system_files.
 systemctl enable podman.socket kube-internal-dns.service
 
+# No Cockpit. ujust's recipe stays because ujust's justfile imports it.
+rm -f /usr/lib/systemd/system/cockpit.service /usr/share/containers/systemd/cockpit-container.container
+
 # Updates must be signed by this repo's key; Bazzite's own policy is kept.
 jq --arg img "$IMAGE" '.transports.docker[$img] = [{
     type: "sigstoreSigned",
