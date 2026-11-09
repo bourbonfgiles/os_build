@@ -9,7 +9,7 @@ fail() { echo "VERIFY FAILED: $*" >&2; failures=$((failures + 1)); }
 kver=$(rpm -q --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' kernel-core | head -1)
 initramfs=/usr/lib/modules/$kver/initramfs.img
 
-# Encryption: the system drive is unlocked by passphrase in the initramfs.
+# Encryption: the initramfs can unlock the system drive.
 [[ -f $initramfs ]] || fail "no initramfs for kernel $kver: the machine will not boot"
 lsinitrd -m "$initramfs" >/tmp/modules 2>/dev/null
 for module in crypt systemd-cryptsetup btrfs; do
@@ -19,11 +19,11 @@ lsinitrd "$initramfs" >/tmp/files 2>/dev/null
 grep -q 'kernel/drivers/md/dm-crypt.ko' /tmp/files ||
   fail "initramfs lacks dm-crypt.ko: the LUKS system drive cannot be unlocked"
 
-# Encryption: drives are only ever unlocked by hand.
-[[ -s /etc/crypttab ]] && fail "image ships /etc/crypttab entries: drives must only be unlocked by hand"
+# Encryption: the image adds no unlock configuration of its own.
+[[ -s /etc/crypttab ]] && fail "image ships /etc/crypttab entries"
 compgen -G '/etc/cryptsetup-keys.d/*' >/dev/null && fail "image ships LUKS keyfiles in /etc/cryptsetup-keys.d"
 compgen -G '/usr/lib/systemd/system/*.wants/systemd-cryptsetup@*' >/dev/null &&
-  fail "image enables a systemd-cryptsetup unit: drives must only be unlocked by hand"
+  fail "image enables a systemd-cryptsetup unit"
 
 # NVIDIA: the kernel module must match the image's kernel.
 rpm -q kmod-nvidia >/dev/null || fail "kmod-nvidia missing: no NVIDIA driver"
