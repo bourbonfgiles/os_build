@@ -1,0 +1,17 @@
+# Sends *.kube.internal to kube_local's BIND LoadBalancer while the k3d bridge exists.
+# A local zone can't satisfy the global DNS-over-TLS and DNSSEC settings.
+[Unit]
+Description=Resolve kube.internal via the local k3d cluster
+BindsTo=sys-subsystem-net-devices-k3d0.device
+After=sys-subsystem-net-devices-k3d0.device systemd-resolved.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/resolvectl dns k3d0 10.89.0.250
+ExecStart=/usr/bin/resolvectl domain k3d0 ~kube.internal
+ExecStart=/usr/bin/resolvectl dnsovertls k3d0 no
+ExecStart=/usr/bin/resolvectl dnssec k3d0 no
+
+[Install]
+WantedBy=sys-subsystem-net-devices-k3d0.device

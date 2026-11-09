@@ -45,6 +45,12 @@ missing=$(ldd /usr/bin/albert 2>/dev/null | grep -c 'not found')
 # No third-party build repos may leak into the image.
 grep -rlsE 'manuelschneid3r|scottames' /etc/yum.repos.d && fail "build-only repo files left in /etc/yum.repos.d"
 
+# Local cluster: k3d's rootful Podman socket, kube.internal DNS, DNS over TLS.
+for unit in podman.socket kube-internal-dns.service; do
+  systemctl is-enabled -q "$unit" || fail "$unit is not enabled: the k3d cluster or kube.internal will not work"
+done
+[[ -f /usr/lib/systemd/resolved.conf.d/dns-over-tls.conf ]] || fail "DNS-over-TLS drop-in missing"
+
 # Updates: this image's signature policy must be valid and point at a real key.
 jq -e --arg img "$IMAGE" '.transports.docker[$img][0].type == "sigstoreSigned"' \
   /etc/containers/policy.json >/dev/null || fail "policy.json has no sigstoreSigned entry for $IMAGE: updates cannot be verified"
