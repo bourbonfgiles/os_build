@@ -7,7 +7,7 @@ It's one of three repos that build the machine:
 | Repo | Owns |
 |---|---|
 | `os_build` (this) | The OS: packages, drivers, system policy |
-| [`dotfiles`](https://github.com/bourbonfgiles/dotfiles) | Me: home config, Homebrew, Flatpaks, GNOME settings, the k3d cluster runtime |
+| [`dotfiles`](https://github.com/bourbonfgiles/dotfiles) | Me: home config, Homebrew, Flatpaks, GNOME settings, the k3d cluster |
 | [`kube_local`](https://github.com/bourbonfgiles/kube_local) | The cluster platform: Cilium, Gateway API, BIND |
 
 ## How it works
