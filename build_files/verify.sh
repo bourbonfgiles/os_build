@@ -34,8 +34,8 @@ rpm -q kmod-nvidia >/dev/null || fail "kmod-nvidia missing: no NVIDIA driver"
 [[ $(rpm -q --qf '%{VERSION}-%{RELEASE}.%{ARCH}' kernel-devel-matched 2>/dev/null) == "$kver" ]] ||
   fail "kernel-devel-matched does not match kernel $kver: BCC tools will not compile"
 
-# Packages this image exists to provide, plus what StarCraft II needs.
-for package in albert ghostty bpftrace bcc-tools bpftool perf podman-docker steam; do
+# Added packages, plus Steam from the base.
+for package in $(</ctx/packages) steam; do
   rpm -q "$package" >/dev/null || fail "package $package missing"
 done
 missing=$(ldd /usr/bin/albert 2>/dev/null | grep -c 'not found')
