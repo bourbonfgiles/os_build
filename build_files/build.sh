@@ -1,27 +1,36 @@
 #!/bin/bash
+set -euxo pipefail
 
-set -ouex pipefail
+IMAGE=ghcr.io/bourbonfgiles/os_build
+PACKAGES=(albert ghostty bpftrace bcc-tools bpftool perf podman-docker)
 
-# Copy the contents of system_files/ of the git repo to /
-cp -avf "/ctx/system_files"/. /
+cp -avf /ctx/system_files/. /
 
-### Install packages
+# Third-party repos exist only during the build; the image ships none.
+# Albert: never Rawhide, whose builds need a newer Qt than the release ships.
+cat >/etc/yum.repos.d/albert.repo <<'REPO'
+[albert]
+name=albert
+baseurl=https://download.opensuse.org/repositories/home:/manuelschneid3r/Fedora_$releasever/
+gpgcheck=1
+gpgkey=https://download.opensuse.org/repositories/home:/manuelschneid3r/Fedora_$releasever/repodata/repomd.xml.key
+REPO
+dnf5 -y copr enable scottames/ghostty
 
-# Packages can be installed from any enabled yum repo on the image.
-# RPMfusion repos are available by default in ublue main images
-# List of rpmfusion packages can be found here:
-# https://mirrors.rpmfusion.org/mirrorlist?path=free/fedora/updates/43/x86_64/repoview/index.html&protocol=https&redirect=1
+dnf5 -y install "${PACKAGES[@]}"
 
-# this installs a package from fedora repos
-dnf5 install -y tmux
+dnf5 -y copr disable scottames/ghostty
+rm -f /etc/yum.repos.d/albert.repo /etc/yum.repos.d/_copr:copr.fedorainfracloud.org:scottames:ghostty.repo
 
-# Use a COPR Example:
-#
-# dnf5 -y copr enable ublue-os/staging
-# dnf5 -y install package
-# Disable COPRs so they don't end up enabled on the final image:
-# dnf5 -y copr disable ublue-os/staging
+# Albert starts with every login.
+install -Dm0644 /usr/share/applications/albert.desktop /etc/xdg/autostart/albert.desktop
 
-#### Example for enabling a System Unit File
-
-systemctl enable podman.socket
+# Updates must be signed by this repo's key; Bazzite's own policy is kept.
+jq --arg img "$IMAGE" '.transports.docker[$img] = [{
+    type: "sigstoreSigned",
+    keyPath: "/etc/pki/containers/os_build.pub",
+    signedIdentity: {type: "matchRepository"}
+  }]' /etc/containers/policy.json >/tmp/policy.json
+install -m0644 /tmp/policy.json /etc/containers/policy.json
+printf 'docker:\n  %s:\n    use-sigstore-attachments: true\n' "$IMAGE" \
+  >/etc/containers/registries.d/os_build.yaml
