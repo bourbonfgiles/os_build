@@ -23,7 +23,7 @@ flowchart LR
 |---|---|
 | `Containerfile` | `FROM bazzite-gnome-nvidia-open:stable-45` (digest-pinned), runs `build.sh`, `verify.sh`, `bootc container lint` |
 | `build_files/packages` | Packages added to the base |
-| `build_files/build.sh` | Installs `packages` from build-only repos, Albert autostart, enables units, adds the signature policy |
+| `build_files/build.sh` | Installs `packages` from build-only repos, Albert autostart, enables units, removes Cockpit, adds the signature policy |
 | `build_files/verify.sh` | Fails the build if the image wouldn't boot, verify updates, or ship what it should |
 | `system_files/` | Copied onto `/`: cosign public key, DNS over TLS, DNS-enabled default `podman` network, rootful `podman.socket` for `wheel`, k3d logging, `kube.internal` DNS |
 | `.github/workflows/build.yml` | Build, rechunk, tag; on `main` push and sign the `latest` digest |
@@ -44,7 +44,8 @@ flowchart LR
 | Roll back | `sudo bootc rollback`, or the previous GRUB entry |
 | Fedora 46 | PR `stable-45` → `stable-46`. Red usually means Albert's OBS has no `Fedora_46` build yet |
 | Rotate the cosign key | Add the new key beside the old (`keyPaths`), build, swap `SIGNING_SECRET`, build, drop the old key |
-| Cosign key lost or leaked | `cosign generate-key-pair`; new `cosign.pub` in the repo root and `system_files/etc/pki/containers/os_build.pub`; `gh secret set SIGNING_SECRET < cosign.key`; merge. Each machine rejects the new signature, so repeat install step 3. Keep `cosign.key` offline, never in the repo |
+| Cosign key lost | `cosign generate-key-pair`; new `cosign.pub` in the repo root and `system_files/etc/pki/containers/os_build.pub`; `gh secret set SIGNING_SECRET < cosign.key`; merge. Each machine rejects the new signature, so repeat install step 3. Keep `cosign.key` offline, never in the repo |
+| Cosign key leaked | `sudo systemctl disable --now uupd.timer` on each machine. Rotate as for a lost key, at once. Check the GHCR package versions and Actions runs for images CI didn't build. Repeat install step 3 only for a digest you've traced to your own run, then re-enable the timer |
 
 ## Install
 

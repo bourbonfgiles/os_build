@@ -53,6 +53,9 @@ done
 jq -e '.name == "podman" and .dns_enabled' /etc/containers/networks/podman.json >/dev/null ||
   fail "default podman network has no DNS: rootful containers query Cloudflare in plain text"
 
+[[ -e /usr/lib/systemd/system/cockpit.service || -e /usr/share/containers/systemd/cockpit-container.container ]] &&
+  fail "Cockpit is in the image"
+
 # Updates: this image's signature policy must be valid and point at a real key.
 jq -e --arg img "$IMAGE" '.transports.docker[$img][0].type == "sigstoreSigned"' \
   /etc/containers/policy.json >/dev/null || fail "policy.json has no sigstoreSigned entry for $IMAGE: updates cannot be verified"
