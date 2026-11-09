@@ -26,7 +26,7 @@ flowchart LR
 | `build_files/build.sh` | Installs `packages` from build-only repos, Albert autostart, enables units, adds the signature policy |
 | `build_files/verify.sh` | Fails the build if the image wouldn't boot, verify updates, or ship what it should |
 | `system_files/` | Copied onto `/`: cosign public key, DNS over TLS, DNS-enabled default `podman` network, rootful `podman.socket` for `wheel`, k3d logging, `kube.internal` DNS |
-| `Justfile`, `.github/workflows/build.yml` | Build, rechunk, tag; on `main` push and sign the `latest` digest |
+| `.github/workflows/build.yml` | Build, rechunk, tag; on `main` push and sign the `latest` digest |
 | `.github/renovate.json5` | Bumps the base digest, automerges on green |
 
 ## Rules
