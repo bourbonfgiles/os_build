@@ -50,6 +50,8 @@ for unit in podman.socket kube-internal-dns.service; do
   systemctl is-enabled -q "$unit" || fail "$unit is not enabled: the k3d cluster or kube.internal will not work"
 done
 [[ -f /usr/lib/systemd/resolved.conf.d/dns-over-tls.conf ]] || fail "DNS-over-TLS drop-in missing"
+jq -e '.name == "podman" and .dns_enabled' /etc/containers/networks/podman.json >/dev/null ||
+  fail "default podman network has no DNS: rootful containers query Cloudflare in plain text"
 
 # Updates: this image's signature policy must be valid and point at a real key.
 jq -e --arg img "$IMAGE" '.transports.docker[$img][0].type == "sigstoreSigned"' \

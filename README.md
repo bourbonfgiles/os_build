@@ -7,7 +7,7 @@ It's one of three repos that build the machine:
 | Repo | Owns |
 |---|---|
 | `os_build` (this) | The OS: packages, drivers, system policy |
-| [`dotfiles`](https://github.com/bourbonfgiles/dotfiles) | Me: home config, Homebrew, Flatpaks, GNOME settings, the k3d cluster runtime |
+| [`dotfiles`](https://github.com/bourbonfgiles/dotfiles) | Me: home config, Homebrew, Flatpaks, GNOME settings, the k3d cluster |
 | [`kube_local`](https://github.com/bourbonfgiles/kube_local) | The cluster platform: Cilium, Gateway API, BIND |
 
 ## How it works
@@ -29,7 +29,7 @@ flowchart LR
 | `Containerfile` | `FROM ghcr.io/ublue-os/bazzite-gnome-nvidia-open:stable-45`, runs the two scripts, then `bootc container lint --fatal-warnings` |
 | `build_files/build.sh` | Adds build-only repos, installs packages, removes the repos, enables Albert autostart, the k3d units and the signature policy |
 | `build_files/verify.sh` | Fails the build if the image could not boot, unlock the drives by passphrase, verify updates, or run what I need |
-| `system_files/` | Copied onto `/`: the cosign public key, DNS over TLS (Cloudflare), and the host side of the k3d cluster (rootful `podman.socket` for wheel, file logging, `kube.internal` DNS) |
+| `system_files/` | Copied onto `/`: the cosign public key, DNS over TLS (Cloudflare), the rootful default `podman` network with DNS on so containers resolve through it, and the host side of the k3d cluster (rootful `podman.socket` for wheel, file logging, `kube.internal` DNS) |
 | `Justfile`, `.github/workflows/build.yml` | Build, rechunk, tag; on `main` also push and sign |
 | `.github/renovate.json5` | Bumps the Bazzite digest and merges it when CI is green |
 
@@ -136,6 +136,7 @@ Start with `sudo bootc status` and `journalctl -u uupd -b`.
 | `Lint warning:` / `Lint error:` | CI log | The image leaves files in `/run`, `/tmp` or `/var` | Add a `tmpfs` mount for that path in the `Containerfile` |
 | `kubectl` can't reach the cluster, `Cannot connect to the Docker daemon` | Machine | `podman.socket` not running | `systemctl status podman.socket`; you must be in `wheel` |
 | `*.kube.internal` doesn't resolve | Machine | Cluster down, or the unit didn't run | `kube-up`, then `systemctl status kube-internal-dns`, `resolvectl status k3d0` |
+| A rootful container's `/etc/resolv.conf` lists `1.1.1.1` | Machine | Plain-text DNS: `/etc/containers/networks/podman.json` is missing or was edited locally | Restore it from `system_files/etc/containers/networks/podman.json`, then `sudo systemctl restart podman.socket` |
 | No update for over a week | Actions tab, Renovate's dashboard issue | CI failing, Renovate stopped, or the workflow disabled | Fix the run; re-enable the workflow |
 | `Deployment contains local rpm-ostree modifications; cannot upgrade via bootc` | Machine | Something was layered | `sudo rpm-ostree reset`, reboot, and put the package in `build.sh` |
 | `Source image rejected: A signature was required, but no signature exists` | Machine | The image wasn't signed: the signing step failed, or a non-CI push | Check the "Sign container image" step |
