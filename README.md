@@ -44,6 +44,7 @@ flowchart LR
 | Roll back | `sudo bootc rollback`, or the previous GRUB entry |
 | Fedora 46 | PR `stable-45` → `stable-46`. Red usually means Albert's OBS has no `Fedora_46` build yet |
 | Rotate the cosign key | Add the new key beside the old (`keyPaths`), build, swap `SIGNING_SECRET`, build, drop the old key |
+| Cosign key lost or leaked | `cosign generate-key-pair`; new `cosign.pub` in the repo root and `system_files/etc/pki/containers/os_build.pub`; `gh secret set SIGNING_SECRET < cosign.key`; merge. Each machine rejects the new signature, so repeat install step 3. Keep `cosign.key` offline, never in the repo |
 
 ## Install
 
