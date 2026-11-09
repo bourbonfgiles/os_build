@@ -75,9 +75,11 @@ jobs:
           TAGS: ${{ steps.tags.outputs.tags }}
         run: |
           set -euxo pipefail
+          # Each push can give a different manifest digest; sign the one bootc pulls.
           for tag in ${TAGS}; do
-            podman push --digestfile=/tmp/digestfile "${IMAGE_NAME}:${tag}" "${IMAGE_REGISTRY}/${IMAGE_NAME}:${tag}"
+            [[ ${tag} == latest ]] || podman push "${IMAGE_NAME}:${tag}" "${IMAGE_REGISTRY}/${IMAGE_NAME}:${tag}"
           done
+          podman push --digestfile=/tmp/digestfile "${IMAGE_NAME}:latest" "${IMAGE_REGISTRY}/${IMAGE_NAME}:latest"
           echo "digest=$(< /tmp/digestfile)" >> "$GITHUB_OUTPUT"
 
       - name: Install Cosign
