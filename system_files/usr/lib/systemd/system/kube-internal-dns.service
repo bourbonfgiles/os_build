@@ -1,4 +1,4 @@
-# Sends *.kube.internal to kube_local's BIND LoadBalancer while the k3d bridge exists.
+# Sends *.kube.internal to the k3d cluster's DNS while its bridge exists.
 # A local zone can't satisfy the global DNS-over-TLS and DNSSEC settings.
 [Unit]
 Description=Resolve kube.internal via the local k3d cluster

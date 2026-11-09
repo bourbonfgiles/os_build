@@ -16,7 +16,7 @@ build:
     set -euxo pipefail
     labels=(
         --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-        --label "org.opencontainers.image.description=Bazzite GNOME NVIDIA with my packages built in"
+        --label "org.opencontainers.image.description=Bazzite GNOME NVIDIA with extra packages"
         --label "org.opencontainers.image.title={{ image }}"
         --label "org.opencontainers.image.vendor={{ org }}"
     )

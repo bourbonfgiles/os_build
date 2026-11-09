@@ -2,7 +2,7 @@
 set -euxo pipefail
 
 IMAGE=ghcr.io/bourbonfgiles/os_build
-PACKAGES=(albert ghostty bpftrace bcc-tools bpftool perf podman-docker)
+mapfile -t PACKAGES </ctx/packages
 
 cp -avf /ctx/system_files/. /
 
