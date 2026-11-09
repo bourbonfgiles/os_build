@@ -10,9 +10,6 @@ It's one of three repos that build the machine:
 | [`dotfiles`](https://github.com/bourbonfgiles/dotfiles) | Me: home config, Homebrew, Flatpaks, GNOME settings, the k3d cluster runtime |
 | [`kube_local`](https://github.com/bourbonfgiles/kube_local) | The cluster platform: Cilium, Gateway API, BIND |
 
-> [!NOTE]
-> No hardware details are recorded here. Learn the machine from [Inspect the machine](#inspect-the-machine).
-
 ## How it works
 
 ```mermaid
@@ -30,27 +27,11 @@ flowchart LR
 | File | Does |
 |---|---|
 | `Containerfile` | `FROM ghcr.io/ublue-os/bazzite-gnome-nvidia-open:stable-45`, runs the two scripts, then `bootc container lint --fatal-warnings` |
-| `build_files/build.sh` | Adds build-only repos, installs packages, removes the repos, adds Albert autostart and the signature policy |
+| `build_files/build.sh` | Adds build-only repos, installs packages, removes the repos, enables Albert autostart, the k3d units and the signature policy |
 | `build_files/verify.sh` | Fails the build if the image could not boot, unlock the drives by passphrase, verify updates, or run what I need |
-| `system_files/` | Copied onto `/`. Holds the cosign public key |
-| `.github/workflows/build.yml` | Universal Blue's template workflow: build, rechunk, push, sign |
+| `system_files/` | Copied onto `/`: the cosign public key, DNS over TLS (Cloudflare), and the host side of the k3d cluster (rootful `podman.socket` for wheel, file logging, `kube.internal` DNS) |
+| `Justfile`, `.github/workflows/build.yml` | Build, rechunk, tag; on `main` also push and sign |
 | `.github/renovate.json5` | Bumps the Bazzite digest and merges it when CI is green |
-
-## Inspect the machine
-
-Read-only. Run these first when helping on this machine.
-
-| Question | Command |
-|---|---|
-| Which image, staged update, rollback target | `sudo bootc status`, `rpm-ostree status` |
-| Disks and LUKS layout | `lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS,MODEL` |
-| Keyslots and tokens | `sudo cryptsetup luksDump <device> \| grep -E 'luks2\|tpm2\|Tokens'` |
-| Kernel arguments (incl. `rd.luks.uuid`) | `rpm-ostree kargs` |
-| Secure Boot and enrolled keys | `mokutil --sb-state`, `mokutil --list-enrolled \| grep Subject:` |
-| GPU and driver | `nvidia-smi --query-gpu=name,driver_version --format=csv` |
-| USB devices and their autosuspend | `grep -H . /sys/bus/usb/devices/*/{product,power/control} 2>/dev/null` |
-| Update runs | `journalctl -u uupd --since -7d` |
-| Suspend history | `journalctl --since -14d \| grep -E 'PM: suspend (entry\|exit)'` |
 
 ## Rules
 
@@ -71,17 +52,10 @@ Read-only. Run these first when helping on this machine.
 
 ## Setup (once)
 
-1. Create this repo from `ublue-os/image-template`, **public**, and enable Actions.
-2. Keys:
-   ```
-   COSIGN_PASSWORD="" cosign generate-key-pair
-   gh secret set SIGNING_SECRET < cosign.key
-   cp cosign.pub system_files/etc/pki/containers/os_build.pub
-   ```
-   Copy `cosign.key` to encrypted storage off the machine, then delete it from disk. Commit `cosign.pub` and the copy.
-3. Push and wait for a green build.
-4. GHCR package → **Package settings → Change visibility → Public**. Packages start private, and a private image can't be pulled without registry credentials.
-5. Install the Renovate GitHub app. Repo settings: **Allow auto-merge**, and a ruleset on `main` requiring the **Build and push image** check.
+1. Create the repo from `ublue-os/image-template`, public, Actions on.
+2. `COSIGN_PASSWORD="" cosign generate-key-pair`, `gh secret set SIGNING_SECRET < cosign.key`, copy `cosign.pub` to `system_files/etc/pki/containers/os_build.pub`. Store `cosign.key` off the machine, then delete it.
+3. After the first green build, make the GHCR package public.
+4. Install the Renovate app; allow auto-merge and require **Build and push image** on `main`.
 
 ## Switch an existing Bazzite to this image
 
@@ -160,6 +134,8 @@ Start with `sudo bootc status` and `journalctl -u uupd -b`.
 | `Could not depsolve transaction` … `nothing provides libQt6Core.so.6(Qt_6.12)` | CI log | A repo built against a newer Fedora than the base (Albert from Rawhide did this) | Point the repo at `Fedora_$releasever`, or wait for the repo. The machine is unaffected |
 | `VERIFY FAILED: …` | CI log | A guard caught something that would break the machine; the message says what | Fix the cause. Never delete the check |
 | `Lint warning:` / `Lint error:` | CI log | The image leaves files in `/run`, `/tmp` or `/var` | Add a `tmpfs` mount for that path in the `Containerfile` |
+| `kubectl` can't reach the cluster, `Cannot connect to the Docker daemon` | Machine | `podman.socket` not running | `systemctl status podman.socket`; you must be in `wheel` |
+| `*.kube.internal` doesn't resolve | Machine | Cluster down, or the unit didn't run | `kube-up`, then `systemctl status kube-internal-dns`, `resolvectl status k3d0` |
 | No update for over a week | Actions tab, Renovate's dashboard issue | CI failing, Renovate stopped, or the workflow disabled | Fix the run; re-enable the workflow |
 | `Deployment contains local rpm-ostree modifications; cannot upgrade via bootc` | Machine | Something was layered | `sudo rpm-ostree reset`, reboot, and put the package in `build.sh` |
 | `Source image rejected: A signature was required, but no signature exists` | Machine | The image wasn't signed: the signing step failed, or a non-CI push | Check the "Sign container image" step |
@@ -168,14 +144,7 @@ Start with `sudo bootc status` and `journalctl -u uupd -b`.
 | rpm-ostree resolves an old package after a repo change, output shows `(cached)` | Machine | Stale repo metadata | `sudo rpm-ostree cleanup -m` |
 | Boots but something's wrong (GPU, game) | Machine | A Bazzite or package regression | `sudo bootc rollback`; compare `rpm -qa` between deployments |
 | No LUKS passphrase prompt, or boot fails | Machine | Bad initramfs or kernel | Pick the previous GRUB entry; the build guards should prevent this, so open an issue |
-| Keyboard dead after resume, mouse works | Machine | Suspend through the monitor's KVM hub | `dotfiles` sets "never suspend on AC"; re-run its GNOME step |
-| Delete prints `~` in the terminal | Machine | zsh has no Delete binding | `dotfiles`' `.zshrc` binds it; run `chezmoi apply` |
 
 ## Stage 2: native Fedora (later)
 
-The plan is to swap the `FROM` for `ghcr.io/ublue-os/silverblue-main` plus Universal Blue's `akmods-nvidia-open` RPMs (see the template README), keeping native Steam. Not before:
-
-- NVIDIA's open kernel modules and Fedora's packaging are good enough that Bazzite adds nothing for this GPU.
-- Signing stays as simple as now: Universal Blue's prebuilt, signed modules, not my own Secure Boot key.
-- StarCraft II is tested on a Stage 2 image while a Bazzite deployment is pinned.
-- `verify.sh` covers the rebuilt initramfs, which Stage 2 creates itself.
+Swap the `FROM` for `ghcr.io/ublue-os/silverblue-main` plus Universal Blue's signed `akmods-nvidia-open`, keeping native Steam. Only once NVIDIA's open modules make Bazzite unnecessary, signing stays this simple, StarCraft II passes with a Bazzite deployment pinned, and `verify.sh` covers the rebuilt initramfs.

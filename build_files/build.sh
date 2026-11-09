@@ -25,6 +25,9 @@ rm -f /etc/yum.repos.d/albert.repo /etc/yum.repos.d/_copr:copr.fedorainfracloud.
 # Albert starts with every login.
 install -Dm0644 /usr/share/applications/albert.desktop /etc/xdg/autostart/albert.desktop
 
+# k3d's runtime and kube.internal DNS; config is in system_files.
+systemctl enable podman.socket kube-internal-dns.service
+
 # Updates must be signed by this repo's key; Bazzite's own policy is kept.
 jq --arg img "$IMAGE" '.transports.docker[$img] = [{
     type: "sigstoreSigned",
