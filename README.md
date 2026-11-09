@@ -53,15 +53,19 @@ flowchart LR
    > Leave the data drive unticked and never choose "reclaim space". Check with `lsblk -o NAME,SIZE,FSTYPE,MODEL` in the live session.
 
 2. Enrol the Secure Boot key at the MOK screen.
-3. Switch, then enforce signatures from the new image:
+3. Pin stock Bazzite as a fallback, then switch:
 
    ```
    cosign verify --key cosign.pub ghcr.io/bourbonfgiles/os_build:latest
+   sudo ostree admin pin 0
    sudo bootc switch --apply ghcr.io/bourbonfgiles/os_build:latest
-   sudo bootc switch --enforce-container-sigpolicy ghcr.io/bourbonfgiles/os_build:latest
    ```
 
-   The first switch can't verify: Bazzite's policy doesn't know this key yet, so `cosign verify` is the check.
+   This switch can't verify: Bazzite's policy doesn't know this key yet, so `cosign verify` is the check. After the reboot, enforce signatures:
+
+   ```
+   sudo bootc switch --enforce-container-sigpolicy ghcr.io/bourbonfgiles/os_build:latest
+   ```
 4. Run `dotfiles`' `bootstrap.sh`.
 
 ## Troubleshooting
