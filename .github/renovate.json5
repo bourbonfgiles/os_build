@@ -1,28 +1,21 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:best-practices",
-  ],
-
+  "extends": ["config:best-practices"],
   "rebaseWhen": "never",
-
   "packageRules": [
     {
-      "automerge": true,
-      "matchUpdateTypes": ["pin", "pinDigest"]
-    },
-    // This prevents the default demo image used in ublue-os/image-template
-    // from being pinned as it serves no purpose there
-    {
+      // A new Bazzite build: CI builds it on the PR, then it merges itself.
       "matchDatasources": ["docker"],
-      "matchPackageNames": ["ghcr.io/ublue-os/bazzite"],
-      "pinDigests": false
+      "matchPackageNames": ["ghcr.io/ublue-os/bazzite-gnome-nvidia-open"],
+      "matchUpdateTypes": ["digest", "pinDigest"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
     },
     {
-      "enabled": false,
-      "matchUpdateTypes": ["digest", "pinDigest", "pin"],
-      "matchDepTypes": ["container"],
-      "matchFileNames": [".github/workflows/**.yaml", ".github/workflows/**.yml"],
-    },
+      // rpm-ostree only verifies cosign's old bundle format; never bump it unreviewed.
+      "matchPackageNames": ["sigstore/cosign-installer"],
+      "automerge": false
+    }
   ]
 }
